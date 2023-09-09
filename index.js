@@ -14,4 +14,14 @@ const getTimeEntries = async () => {
   console.log(data.map((entry) => entry.description));
 };
 
-getTimeEntries();
+const getProjects = async () => {
+  const url = `${togglUrl}/projects`;
+  const response = await fetch(url, { method: 'GET', headers });
+
+  if (!response.ok) return response.text().then(console.log);
+
+  const data = await response.json();
+  console.log(data);
+};
+
+getProjects();
