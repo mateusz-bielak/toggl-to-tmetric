@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import minimist from 'minimist';
 import 'dotenv/config';
 
 const togglUrl = 'https://api.track.toggl.com/api/v9/me';
@@ -16,11 +17,11 @@ tmetricHeaders.append('Authorization', `Bearer ${tmetricApiToken}`);
 tmetricHeaders.append('Content-Type', 'application/json');
 tmetricHeaders.append('accept', 'application/json');
 
-const from = process.env.npm_config_from;
-const to = process.env.npm_config_to;
+const { from, to } = minimist(process.argv.slice(2));
 
 const getTogglTimeEntries = async () => {
-  const url = `${togglUrl}/time_entries?start_date=${from}&end_date=${to}`;
+  const formattedTo = dayjs(to).add(1, 'day').format('YYYY-MM-DD');
+  const url = `${togglUrl}/time_entries?start_date=${from}&end_date=${formattedTo}`;
   const response = await fetch(url, { method: 'GET', headers: togglHeaders });
 
   if (!response.ok) return response.text().then(console.log);
@@ -69,7 +70,6 @@ const postTimeEntry = async (body) => {
   if (!response.ok) return console.log(`${response.status}: ${response.statusText}`);
 
   const data = await response.json();
-  console.log(data);
 };
 
 const getTmetricProjectId = (togglProjectId, togglProjects, tmetricProjects) => {
@@ -86,10 +86,10 @@ const copyEntriesFromTogglToTmetric = async () => {
     const projectId = getTmetricProjectId(entry.project_id, togglProjects, tmetricProjects);
 
     const startDate = new Date(entry.start);
-    const startTime = dayjs(startDate, 'YYYY-MM-DDTHH::mm:ss');
+    const startTime = dayjs(startDate).format('YYYY-MM-DDTHH:mm:ss');
 
     const endDate = new Date(entry.stop);
-    const endTime = dayjs(endDate, 'YYYY-MM-DDTHH::mm:ss');
+    const endTime = dayjs(endDate).format('YYYY-MM-DDTHH:mm:ss');
 
     return {
       startTime,
@@ -98,6 +98,15 @@ const copyEntriesFromTogglToTmetric = async () => {
       project: { id: projectId },
     };
   });
+
+  console.log(
+    togglTimeEntries.map(({ project_id, start, stop, description }) => ({
+      task: description,
+      project: togglProjects.find(({ id }) => id === project_id)?.name,
+      startTime: start,
+      stopTime: stop,
+    })),
+  );
 
   tmetricTimeEntries.forEach(postTimeEntry);
 };
