@@ -1,6 +1,7 @@
 import dayjs from 'dayjs';
 import minimist from 'minimist';
 import 'dotenv/config';
+import { TimeEntryBody, TmetricProject, TogglProject, TogglTimeEntry } from './types.js';
 
 const togglUrl = 'https://api.track.toggl.com/api/v9/me';
 const tmetricUrl = 'https://app.tmetric.com/api/v3';
@@ -19,21 +20,27 @@ tmetricHeaders.append('accept', 'application/json');
 
 const { from, to } = minimist(process.argv.slice(2));
 
-const getTogglTimeEntries = async () => {
+const getTogglTimeEntries = async (): Promise<TogglTimeEntry[]> => {
   const formattedTo = dayjs(to).add(1, 'day').format('YYYY-MM-DD');
   const url = `${togglUrl}/time_entries?start_date=${from}&end_date=${formattedTo}`;
   const response = await fetch(url, { method: 'GET', headers: togglHeaders });
 
-  if (!response.ok) return response.text().then(console.log);
+  if (!response.ok) {
+    const responseText = await response.text();
+    throw new Error(responseText);
+  }
 
   return response.json();
 };
 
-const getTogglProjects = async () => {
+const getTogglProjects = async (): Promise<TogglProject[]> => {
   const url = `${togglUrl}/projects`;
   const response = await fetch(url, { method: 'GET', headers: togglHeaders });
 
-  if (!response.ok) return response.text().then(console.log);
+  if (!response.ok) {
+    const responseText = await response.text();
+    throw new Error(responseText);
+  }
 
   return response.json();
 };
@@ -57,7 +64,7 @@ const getTmetricProjects = async () => {
   return response.json();
 };
 
-const postTimeEntry = async (body) => {
+const postTimeEntry = async (body: TimeEntryBody) => {
   const user = await getUser();
   const url = `${tmetricUrl}/accounts/${user.activeAccountId}/timeentries`;
 
@@ -72,7 +79,11 @@ const postTimeEntry = async (body) => {
   const data = await response.json();
 };
 
-const getTmetricProjectId = (togglProjectId, togglProjects, tmetricProjects) => {
+const getTmetricProjectId = (
+  togglProjectId: string,
+  togglProjects: TogglProject[],
+  tmetricProjects: TmetricProject[],
+) => {
   const togglProjectName = togglProjects.find(({ id }) => id === togglProjectId)?.name;
   return tmetricProjects?.find(({ name }) => name === togglProjectName)?.id;
 };
