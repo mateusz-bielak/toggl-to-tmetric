@@ -93,29 +93,33 @@ const copyEntriesFromTogglToTmetric = async () => {
   const tmetricProjects = await getTmetricProjects();
   const togglTimeEntries = await getTogglTimeEntries();
 
-  const tmetricTimeEntries = togglTimeEntries.map((entry) => {
-    const projectId = getTmetricProjectId(entry.project_id, togglProjects, tmetricProjects);
+  const tmetricTimeEntries = togglTimeEntries
+    .map((entry) => {
+      const projectId = getTmetricProjectId(entry.project_id, togglProjects, tmetricProjects);
 
-    const startDate = new Date(entry.start);
-    const startTime = dayjs(startDate).format('YYYY-MM-DDTHH:mm:ss');
+      if (!projectId) return undefined;
 
-    const endDate = new Date(entry.stop);
-    const endTime = dayjs(endDate).format('YYYY-MM-DDTHH:mm:ss');
+      const startDate = new Date(entry.start);
+      const startTime = dayjs(startDate).format('YYYY-MM-DDTHH:mm:ss');
 
-    return {
-      startTime,
-      endTime,
-      task: { name: entry.description },
-      project: { id: projectId },
-    };
-  });
+      const endDate = new Date(entry.stop);
+      const endTime = dayjs(endDate).format('YYYY-MM-DDTHH:mm:ss');
+
+      return {
+        startTime,
+        endTime,
+        task: { name: entry.description },
+        project: { id: projectId },
+      };
+    })
+    .filter(Boolean);
 
   console.log(
-    togglTimeEntries.map(({ project_id, start, stop, description }) => ({
-      task: description,
-      project: togglProjects.find(({ id }) => id === project_id)?.name,
-      startTime: start,
-      stopTime: stop,
+    tmetricTimeEntries.map(({ project, task, startTime, endTime }) => ({
+      task: task.name,
+      project: tmetricProjects.find(({ id }) => id === project.id)?.name,
+      startTime,
+      endTime,
     })),
   );
 
